@@ -63,13 +63,6 @@ bool FloodingRouter::isRebroadcaster()
            config.device.rebroadcast_mode != meshtastic_Config_DeviceConfig_RebroadcastMode_NONE;
 }
 
-bool FloodingRouter::isZeroRouter()
-{
-    return config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER &&
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE;
-}
-
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
@@ -77,12 +70,13 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
             if (isRebroadcaster()) {
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
 
-                if (isZeroRouter()) {
-                    // If we are not a router/repeater, hop count will be decreased by one
-                    if (tosend->hop_limit > 0) {
+                // If we are not a router/repeater, hop count will be decreased by one
+                if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER &&
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) {
+                        
                         tosend->hop_limit--; // bump down the hop count
-                    }
-                }                
+                }          
 
 #if USERPREFS_EVENT_MODE
                 if (tosend->hop_limit > 2) {

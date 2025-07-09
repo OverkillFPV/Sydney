@@ -138,9 +138,6 @@ class NextHopRouter : public FloodingRouter
 
     void setNextTx(PendingPacket *pending);
 
-    // Return true if we are permitted to be a zero hop router
-    bool isZeroRouter();
-
   private:
     /**
      * Get the next hop for a destination, given the relay node

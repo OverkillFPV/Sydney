@@ -64,7 +64,4 @@ class FloodingRouter : public Router
 
     // Return true if we are a rebroadcaster
     bool isRebroadcaster();
-
-    // Return true if we are permitted to be a zero hop router
-    bool isZeroRouter();
 };

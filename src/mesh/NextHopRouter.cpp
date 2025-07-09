@@ -95,13 +95,6 @@ void NextHopRouter::sniffReceived(const meshtastic_MeshPacket *p, const meshtast
     Router::sniffReceived(p, c);
 }
 
-bool FloodingRouter::isZeroRouter()
-{
-    return config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER &&
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE;
-}
-
 /* Check if we should be relaying this packet if so, do so. */
 bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
 {
@@ -113,12 +106,13 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
 
                 NextHopRouter::send(tosend);
 
-                if (isZeroRouter()) {
-                    // If we are not a router/repeater, hop count will be decreased by one
-                    if (tosend->hop_limit > 0) {
+                // If we are not a router/repeater, hop count will be decreased by one
+                if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER &&
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) {
+                        
                         tosend->hop_limit--; // bump down the hop count
-                    }
-                }                 
+                }
 
                 return true;
             } else {
