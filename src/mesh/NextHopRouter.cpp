@@ -107,11 +107,13 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                 NextHopRouter::send(tosend);
 
                 if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER &&
-                                config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
-                                config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) {
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) {
                     // If we are not a router/repeater, hop count will be decreased by one
-                    tosend->hop_limit--; // bump down the hop count                   
-                 }                
+                    if (tosend->hop_limit > 0) {
+                        tosend->hop_limit--; // bump down the hop count
+                    }
+                }                
 
                 return true;
             } else {
