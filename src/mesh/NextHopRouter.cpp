@@ -104,7 +104,7 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
                 LOG_INFO("Relaying received message coming from %x", p->relay_node);
 
-                tosend->hop_limit--; // bump down the hop count
+                //tosend->hop_limit--; // bump down the hop count
                 NextHopRouter::send(tosend);
 
                 return true;
