@@ -81,11 +81,28 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 #endif
                 tosend->next_hop = NO_NEXT_HOP_PREFERENCE; // this should already be the case, but just in case
                 
-                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER){
+                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE ||
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //check if we are a router
+
                     if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
-                        p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
-                        LOG_DEBUG("Dropping TELEMETRY_APP (67) from rebroadcast");
-                        return;  // suppress rebroadcast, still handled locally
+                        p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) { //check if it is a telemetry packet
+                            
+                            if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER ||
+                                config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
+                                LOG_DEBUG("Dropping TELEMETRY_APP (67) from rebroadcast");
+                                return;  //suppress rebroadcast if router or repeater modes, still handled locally
+                            }
+                            else {
+                                if (tosend->hop_limit > 2) { //still rebroadcast but limit telemetry packet hops to 2 if router late mode
+                                    tosend->hop_limit = 2;
+                                    LOG_DEBUG("Broadcasting Telemetry packet with hop limit 2");
+                                }
+                                else{
+                                    tosend->hop_limit--; //decrement hop limit of telemetry packets if router late mode and hop limit is already 2 or less
+                                    LOG_DEBUG("Broadcasting Telemetry packet and decrementing hop limit");
+                                }
+                            }
                     }
                 }
 
@@ -98,7 +115,7 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                 else {
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
                 }
-                
+
                 LOG_INFO("Rebroadcast received floodmsg");
                 // Note: we are careful to resend using the original senders node id
                 // We are careful not to call our hooked version of send() - because we don't want to check this again
