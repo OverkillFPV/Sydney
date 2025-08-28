@@ -110,7 +110,15 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
                     
-                        LOG_DEBUG("Hop count not decremented");
+                        if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
+                        p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
+
+                            tosend->hop_limit--;//Bump down hop count of postion packets only if we are a router
+                            LOG_DEBUG("Decrementing hop limit of POSITION_APP (3) packet");
+                        }
+                        else{
+                            LOG_DEBUG("Hop count not decremented");
+                        }
                 }
                 else {
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
