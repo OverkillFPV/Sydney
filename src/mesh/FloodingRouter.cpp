@@ -89,13 +89,16 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     }
                 }
 
-                if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER || 
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
-                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
-                    LOG_DEBUG("Hop count decremented");
+                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
+                    
+                        LOG_DEBUG("Hop count not decremented");
+                }
+                else {
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
                 }
-
+                
                 LOG_INFO("Rebroadcast received floodmsg");
                 // Note: we are careful to resend using the original senders node id
                 // We are careful not to call our hooked version of send() - because we don't want to check this again
