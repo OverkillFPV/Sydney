@@ -104,8 +104,14 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
                 LOG_INFO("Relaying received message coming from %x", p->relay_node);
 
-                //tosend->hop_limit--; // bump down the hop count
-                NextHopRouter::send(tosend);
+                tosend->hop_limit--; // bump down the hop count
+                
+                if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER || 
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
+                    config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
+                
+                    NextHopRouter::send(tosend); //Bump down hop count only if we are not a router
+                }
 
                 return true;
             } else {

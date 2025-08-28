@@ -2,7 +2,7 @@
 
 #include "configuration.h"
 #include "mesh-pb-constants.h"
-
+#include "mesh/generated/meshtastic/portnums.pb.h" //meshtastic_PortNum_TELEMETRY_APP
 FloodingRouter::FloodingRouter() {}
 
 /**
@@ -71,8 +71,7 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
         if (p->id != 0) {
             if (isRebroadcaster()) {
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
-
-                //tosend->hop_limit--; // bump down the hop count
+                
 #if USERPREFS_EVENT_MODE
                 if (tosend->hop_limit > 2) {
                     // if we are "correcting" the hop_limit, "correct" the hop_start by the same amount to preserve hops away.
@@ -81,6 +80,22 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                 }
 #endif
                 tosend->next_hop = NO_NEXT_HOP_PREFERENCE; // this should already be the case, but just in case
+                
+                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
+
+                    // Drop telemetry packets from rebroadcast (zero-hop telemetry)
+                    if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
+                        p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
+                        LOG_DEBUG("Dropping TELEMETRY_APP (67) from rebroadcast");
+                        return;  // suppress rebroadcast, still handled locally
+                        }
+                    
+                    }
+                else{
+                    tosend->hop_limit--; // bump down the hop count only if we are not a router
+                }    
 
                 LOG_INFO("Rebroadcast received floodmsg");
                 // Note: we are careful to resend using the original senders node id
