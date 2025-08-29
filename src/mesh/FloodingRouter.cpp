@@ -124,6 +124,11 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
                 }
 
+                if (tosend->decoded.has_bitfield & !(tosend->decoded.bitfield & BITFIELD_OK_TO_MQTT_MASK)) {
+                    tosend->decoded.bitfield |= BITFIELD_OK_TO_MQTT_MASK;  // Set the MQTT bit while preserving other bits
+                    LOG_DEBUG("Broadcasting with bitfield cleared");
+                }
+
                 LOG_INFO("Rebroadcast received floodmsg");
                 // Note: we are careful to resend using the original senders node id
                 // We are careful not to call our hooked version of send() - because we don't want to check this again

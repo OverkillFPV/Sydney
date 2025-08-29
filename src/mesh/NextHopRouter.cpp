@@ -114,6 +114,11 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
                 }
 
+                if (tosend->decoded.has_bitfield & !(tosend->decoded.bitfield & BITFIELD_OK_TO_MQTT_MASK)) {
+                    tosend->decoded.bitfield |= BITFIELD_OK_TO_MQTT_MASK;  // Set the MQTT bit while preserving other bits
+                    LOG_DEBUG("Broadcasting with bitfield cleared");
+                }
+
                 NextHopRouter::send(tosend);
                 return true;
             } else {
