@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Router.h"
+#include <vector>
 
 /**
  * This is a mixin that extends Router with the ability to do Naive Flooding (in the standard mesh protocol sense)
@@ -30,6 +31,15 @@ class FloodingRouter : public Router
   private:
     /* Check if we should rebroadcast this packet, and do so if needed */
     void perhapsRebroadcast(const meshtastic_MeshPacket *p);
+
+    // List of node IDs that should be ignored for rebroadcasting
+    const std::vector<NodeNum> ignoredNodes = {
+        0xba0c7538,
+        0x66a9b13b,
+        0x6c741290,
+        0x2b5590b8,
+        0x339bd883
+    };
 
   public:
     /**

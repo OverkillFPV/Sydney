@@ -67,6 +67,12 @@ bool FloodingRouter::isRebroadcaster()
 
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
+    // Check if the sending node is in our ignore list
+    if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
+        LOG_DEBUG("Ignoring rebroadcast from blocked node 0x%08x", p->from);
+        return;
+    }
+
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
         if (p->id != 0) {
             if (isRebroadcaster()) {
