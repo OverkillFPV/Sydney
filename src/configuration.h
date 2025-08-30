@@ -473,8 +473,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
         0x66a9b13b,                                                      \
         0x6c741290,                                                      \
         0x2b5590b8,                                                      \
-        0x339bd883,                                                      \
-        0xbff53fee                                                       \
+        0x339bd883                                                       \
     }
     
 //Needs to have blank line at end of file for reasons i don't uderstand
