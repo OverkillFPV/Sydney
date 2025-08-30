@@ -67,7 +67,8 @@ bool FloodingRouter::isRebroadcaster()
 
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
-    // Check if the sending node is in our ignore list
+
+        // Check if the sending node is in our ignore list
     if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
         LOG_DEBUG("Ignoring rebroadcast from blocked node 0x%08x", p->from);
         return;
@@ -76,6 +77,7 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
         if (p->id != 0) {
             if (isRebroadcaster()) {
+
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
                 
 #if USERPREFS_EVENT_MODE
@@ -85,6 +87,7 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     tosend->hop_limit = 2;
                 }
 #endif
+
                 tosend->next_hop = NO_NEXT_HOP_PREFERENCE; // this should already be the case, but just in case
                 
                 if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 

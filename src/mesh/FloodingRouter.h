@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Router.h"
+#include "configuration.h"
 #include <vector>
 
 /**
@@ -33,13 +34,7 @@ class FloodingRouter : public Router
     void perhapsRebroadcast(const meshtastic_MeshPacket *p);
 
     // List of node IDs that should be ignored for rebroadcasting
-    const std::vector<NodeNum> ignoredNodes = {
-        0xba0c7538,
-        0x66a9b13b,
-        0x6c741290,
-        0x2b5590b8,
-        0x339bd883
-    };
+    const std::vector<NodeNum> ignoredNodes = IGNORED_NODE_IDS;
 
   public:
     /**

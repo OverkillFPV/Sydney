@@ -60,6 +60,10 @@ class GlobalPacketIdHashFunction
 */
 class NextHopRouter : public FloodingRouter
 {
+  private:
+    // List of node IDs that should be ignored for rebroadcasting
+    const std::vector<NodeNum> ignoredNodes = IGNORED_NODE_IDS;
+
   public:
     /**
      * Constructor
