@@ -98,15 +98,34 @@ void NextHopRouter::sniffReceived(const meshtastic_MeshPacket *p, const meshtast
 /* Check if we should be relaying this packet if so, do so. */
 bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
 {
+    // Check if the sending node is in our ignore list
+    if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
+        LOG_DEBUG("Ignoring relay from blocked node 0x%08x", p->from);
+        return false;
+    }
+
     if (!isToUs(p) && !isFromUs(p) && p->hop_limit > 0) {
         if (p->next_hop == NO_NEXT_HOP_PREFERENCE || p->next_hop == nodeDB->getLastByteOfNodeNum(getNodeNum())) {
             if (isRebroadcaster()) {
+
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
                 LOG_INFO("Relaying received message coming from %x", p->relay_node);
+                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
+                    config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
+                    
+                        LOG_DEBUG("Hop count not decremented");
+                }
+                else {
+                    tosend->hop_limit--;//Bump down hop count only if we are not a router
+                }
 
-                //tosend->hop_limit--; // bump down the hop count
+                if (tosend->decoded.has_bitfield & !(tosend->decoded.bitfield & BITFIELD_OK_TO_MQTT_MASK)) {
+                    tosend->decoded.bitfield |= BITFIELD_OK_TO_MQTT_MASK;  // Set the MQTT bit while preserving other bits
+                    LOG_DEBUG("Broadcasting with bitfield cleared");
+                }
+
                 NextHopRouter::send(tosend);
-
                 return true;
             } else {
                 LOG_DEBUG("Not rebroadcasting: Role = CLIENT_MUTE or Rebroadcast Mode = NONE");
