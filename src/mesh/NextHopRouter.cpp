@@ -113,7 +113,7 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                 if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
-                    ;
+                        
                         if (tosend->hop_limit == 7){
                             LOG_DEBUG("Decrementing hop limit to prevent direct node in node list");
                             tosend->hop_limit--;
