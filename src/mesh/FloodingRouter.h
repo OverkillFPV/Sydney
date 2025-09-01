@@ -3,6 +3,24 @@
 #include "Router.h"
 #include "configuration.h"
 #include <vector>
+#include <array>
+
+// Define a small fixed size for our tracking arrays
+#define MAX_TRACKED_NODES 32
+
+// Define packet types for tracking
+enum class TrackedPacketType {
+    TELEMETRY,
+    POSITION,
+    USERINFO,
+    ENCRYPTED
+};
+
+struct TrackedNode {
+    NodeNum nodeNum;
+    uint32_t lastTime;
+    bool isValid;
+};
 
 /**
  * This is a mixin that extends Router with the ability to do Naive Flooding (in the standard mesh protocol sense)
@@ -30,6 +48,15 @@
 class FloodingRouter : public Router
 {
   private:
+    // Fixed size arrays for tracking recent packets
+    std::array<TrackedNode, MAX_TRACKED_NODES> trackedNodes[4]; // One array per packet type
+    uint8_t trackingIndex[4] = {0, 0, 0, 0};
+    
+    const uint32_t PACKET_TIMEOUT_MS = 900000;     // 15 minutes for normal packets
+    const uint32_t ENCRYPTED_TIMEOUT_MS = 300000;  // 5 minutes for encrypted
+
+    bool shouldDropRecentPacket(NodeNum from, TrackedPacketType type);
+    void updateTrackedNode(NodeNum from, TrackedPacketType type);
     /* Check if we should rebroadcast this packet, and do so if needed */
     void perhapsRebroadcast(const meshtastic_MeshPacket *p);
 

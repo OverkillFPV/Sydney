@@ -65,13 +65,78 @@ bool FloodingRouter::isRebroadcaster()
            config.device.rebroadcast_mode != meshtastic_Config_DeviceConfig_RebroadcastMode_NONE;
 }
 
+bool FloodingRouter::shouldDropRecentPacket(NodeNum from, TrackedPacketType type)
+{
+    uint32_t currentTime = millis();
+    uint32_t timeout = (type == TrackedPacketType::ENCRYPTED) ? ENCRYPTED_TIMEOUT_MS : PACKET_TIMEOUT_MS;
+    auto& nodes = trackedNodes[static_cast<int>(type)];
+
+    // Check if node exists in our tracking array
+    for(const auto& node : nodes) {
+        if(node.isValid && node.nodeNum == from) {
+            if(currentTime - node.lastTime < timeout) {
+                LOG_DEBUG("Dropping %s packet from 0x%x - too recent", 
+                    type == TrackedPacketType::TELEMETRY ? "telemetry" :
+                    type == TrackedPacketType::POSITION ? "position" :
+                    type == TrackedPacketType::USERINFO ? "user info" : "encrypted", 
+                    from);
+                return true;
+            }
+            break;
+        }
+    }
+
+    updateTrackedNode(from, type);
+    return false;
+}
+
+void FloodingRouter::updateTrackedNode(NodeNum from, TrackedPacketType type) 
+{
+    auto& nodes = trackedNodes[static_cast<int>(type)];
+    auto& index = trackingIndex[static_cast<int>(type)];
+    
+    // First try to update existing entry
+    for(auto& node : nodes) {
+        if(node.isValid && node.nodeNum == from) {
+            node.lastTime = millis();
+            return;
+        }
+    }
+
+    // If not found, add to next slot in circular buffer
+    nodes[index].nodeNum = from;
+    nodes[index].lastTime = millis();
+    nodes[index].isValid = true;
+    
+    // Move to next slot
+    index = (index + 1) % MAX_TRACKED_NODES;
+}
+
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
-
-        // Check if the sending node is in our ignore list
+    // Check if the sending node is in our ignore list
     if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
         LOG_DEBUG("Ignoring rebroadcast from blocked node 0x%08x", p->from);
         return;
+    }
+
+    // Check for packet type and apply limits
+    if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
+        if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
+            return;
+        }
+    } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
+        if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
+            return;
+        }
+    } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
+        if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
+            return;
+        }
+    } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
+        if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
+            return;
+        }
     }
 
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
@@ -116,9 +181,14 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     }                
                     else if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
                         p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
-
+                        
                         tosend->hop_limit--;//Bump down hop count of postion packets only if we are a router
                         LOG_DEBUG("Decrementing hop count of position packet");
+                    }
+
+                    else if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag){ //decrements hop count of encrypted packets
+                        tosend->hop_limit--;
+                        LOG_DEBUG("Decrementing hop limit of encrypted packet");
                     }
 
                     else{
