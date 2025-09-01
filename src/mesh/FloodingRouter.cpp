@@ -112,24 +112,34 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                                     LOG_DEBUG("Broadcasting Telemetry packet and decrementing hop limit");
                                 }
                             }
-                    }
-                }
 
-                if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
-                    config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
-                    config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
-                    
-                        if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
+                    }                
+                    else if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
                         p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
 
-                            tosend->hop_limit--;//Bump down hop count of postion packets only if we are a router
-                            LOG_DEBUG("Decrementing hop limit of POSITION_APP (3) packet");
+                        tosend->hop_limit--;//Bump down hop count of postion packets only if we are a router
+                        LOG_DEBUG("Decrementing hop count of position packet");
+                    }
+
+                    else{
+                        if (tosend->hop_start < 7){
+
+                            tosend->hop_start++; //Bump up hop start only if we are a router and hop_start - essentially zero hop while still counting hops correctly
+                            LOG_DEBUG("Incrementing hop start of non-telemetry/position packet");
                         }
                         else{
-                            LOG_DEBUG("Hop count not decremented");
+                            if (tosend->hop_limit == 7){
+                                LOG_DEBUG("Decrementing hop limit to prevent direct node in node list");
+                                tosend->hop_limit--;
+                            }
+                            else{
+                                LOG_DEBUG("Zero hop packet");
+                            }
                         }
+                    }
+
                 }
-                else {
+                else{
                     tosend->hop_limit--;//Bump down hop count only if we are not a router
                 }
 
