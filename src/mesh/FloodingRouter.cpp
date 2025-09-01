@@ -120,25 +120,6 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
         return;
     }
 
-    // Check for packet type and apply limits
-    if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
-        if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
-            return;
-        }
-    } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
-        if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
-            return;
-        }
-    } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
-        if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
-            return;
-        }
-    } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
-        if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
-            return;
-        }
-    }
-
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
         if (p->id != 0) {
             if (isRebroadcaster()) {
@@ -159,13 +140,32 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                     config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE ||
                     config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //check if we are a router
 
+                        // Check for packet type and apply limits
+                if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
+                    if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
+                        return;
+                    }
+                } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
+                    if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
+                        return;
+                    }
+                } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
+                    if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
+                        return;
+                    }
+                } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
+                    if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
+                        return;
+                    }
+                }
+
                     if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
                         p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) { //check if it is a telemetry packet
                             
                             if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER ||
                                 config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
                                 LOG_DEBUG("Dropping TELEMETRY_APP (67) from rebroadcast");
-                                return;  //suppress rebroadcast if router or repeater modes, still handled locally
+                                //return;  //suppress rebroadcast if router or repeater modes, still handled locally
                             }
                             else {
                                 if (tosend->hop_limit > 2) { //still rebroadcast but limit telemetry packet hops to 2 if router late mode
