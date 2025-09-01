@@ -165,12 +165,12 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                             if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER ||
                                 config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) {
                                 LOG_DEBUG("Dropping TELEMETRY_APP (67) from rebroadcast");
-                                //return;  //suppress rebroadcast if router or repeater modes, still handled locally
+                                return;  //suppress rebroadcast if router or repeater modes, still handled locally
                             }
                             else {
-                                if (tosend->hop_limit > 2) { //still rebroadcast but limit telemetry packet hops to 2 if router late mode
-                                    tosend->hop_limit = 2;
-                                    LOG_DEBUG("Broadcasting Telemetry packet with hop limit 2");
+                                if (tosend->hop_limit > 1) { //still rebroadcast but limit telemetry packet hops to 2 if router late mode
+                                    tosend->hop_limit = 1;
+                                    LOG_DEBUG("Broadcasting Telemetry packet with hop limit 1");
                                 }
                                 else{
                                     tosend->hop_limit--; //decrement hop limit of telemetry packets if router late mode and hop limit is already 2 or less
