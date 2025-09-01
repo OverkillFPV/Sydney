@@ -469,11 +469,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // List of node IDs that should be ignored for rebroadcasting
 #define IGNORED_NODE_IDS                                                 \
     {                                                                    \
-        0xba0c7538,                                                      \
-        0x66a9b13b,                                                      \
         0x6c741290,                                                      \
         0x2b5590b8,                                                      \
         0x339bd883                                                       \
     }
     
 //Needs to have blank line at end of file for reasons i don't uderstand
+
+
+//Removed nodes off list
+//0xba0c7538
+//0x66a9b13b
