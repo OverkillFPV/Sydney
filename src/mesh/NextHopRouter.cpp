@@ -119,7 +119,7 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                             tosend->hop_limit--;
                         }
                         else{
-                            LOG_DEBUG("Hop count not decremented")
+                            LOG_DEBUG("Hop count not decremented");
                         }
                 }
                 else {
