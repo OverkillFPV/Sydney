@@ -13,13 +13,15 @@ enum class TrackedPacketType {
     TELEMETRY,
     POSITION,
     USERINFO,
-    ENCRYPTED
+    ENCRYPTED,
+    TRACEROUTE
 };
 
 struct TrackedNode {
     NodeNum nodeNum;
     uint32_t lastTime;
     bool isValid;
+    uint8_t tracerouteCount;  // Add counter for traceroute packets
 };
 
 /**
@@ -47,13 +49,14 @@ struct TrackedNode {
  */
 class FloodingRouter : public Router
 {
-  private:
+  protected:  // Change from private to protected to allow access from child classes
     // Fixed size arrays for tracking recent packets
-    std::array<TrackedNode, MAX_TRACKED_NODES> trackedNodes[4]; // One array per packet type
-    uint8_t trackingIndex[4] = {0, 0, 0, 0};
+    std::array<TrackedNode, MAX_TRACKED_NODES> trackedNodes[5]; 
+    uint8_t trackingIndex[5] = {0, 0, 0, 0, 0};
     
     const uint32_t PACKET_TIMEOUT_MS = 900000;     // 15 minutes for normal packets
     const uint32_t ENCRYPTED_TIMEOUT_MS = 300000;  // 5 minutes for encrypted
+    const uint8_t MAX_INITIAL_TRACEROUTE = 5;      // Maximum traceroutes in first 15 minutes
 
     bool shouldDropRecentPacket(NodeNum from, TrackedPacketType type);
     void updateTrackedNode(NodeNum from, TrackedPacketType type);

@@ -98,22 +98,51 @@ void NextHopRouter::sniffReceived(const meshtastic_MeshPacket *p, const meshtast
 /* Check if we should be relaying this packet if so, do so. */
 bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
 {
-    // Check if the sending node is in our ignore list
-    if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
-        LOG_DEBUG("Ignoring relay from blocked node 0x%08x", p->from);
-        return false;
-    }
-
     if (!isToUs(p) && !isFromUs(p) && p->hop_limit > 0) {
         if (p->next_hop == NO_NEXT_HOP_PREFERENCE || p->next_hop == nodeDB->getLastByteOfNodeNum(getNodeNum())) {
             if (isRebroadcaster()) {
 
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
-                LOG_INFO("Relaying received message coming from %x", p->relay_node);
+
+                // Check if the sending node is in our ignore list
+                if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
+                    LOG_DEBUG("Ignoring relay from blocked node 0x%08x", p->from);
+                    return false;
+                }
+
+                // Check if packet came from MQTT
+                if (p->transport_mechanism == p->via_mqtt) {
+                    LOG_DEBUG("Not rebroadcasting MQTT packet from 0x%08x", p->from);
+                    return false;
+                }
+
                 if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //Check if we are a router
                         
+                        // Check for packet type and apply limits using FloodingRouter's tracking
+                        if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
+                            if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
+                                return false;
+                            }
+                        } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
+                            if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
+                                return false;
+                            }
+                        } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
+                            if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
+                                return false;
+                            }
+                        } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
+                            if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
+                                return false;
+                            }
+                        } else if (p->decoded.portnum == meshtastic_PortNum_TRACEROUTE_APP) {
+                            if (shouldDropRecentPacket(p->from, TrackedPacketType::TRACEROUTE)) {
+                                return false;
+                            }
+                        }
+
                         if (tosend->hop_limit == 7){
                             LOG_DEBUG("Decrementing hop limit to prevent direct node in node list");
                             tosend->hop_limit--;
@@ -131,6 +160,7 @@ bool NextHopRouter::perhapsRelay(const meshtastic_MeshPacket *p)
                     LOG_DEBUG("Broadcasting with bitfield cleared");
                 }
 
+                LOG_INFO("Relaying received message coming from %x", p->relay_node);
                 NextHopRouter::send(tosend);
                 return true;
             } else {

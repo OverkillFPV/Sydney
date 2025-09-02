@@ -71,18 +71,36 @@ bool FloodingRouter::shouldDropRecentPacket(NodeNum from, TrackedPacketType type
     uint32_t timeout = (type == TrackedPacketType::ENCRYPTED) ? ENCRYPTED_TIMEOUT_MS : PACKET_TIMEOUT_MS;
     auto& nodes = trackedNodes[static_cast<int>(type)];
 
-    // Check if node exists in our tracking array
-    for(const auto& node : nodes) {
-        if(node.isValid && node.nodeNum == from) {
-            if(currentTime - node.lastTime < timeout) {
-                LOG_DEBUG("Dropping %s packet from 0x%x - too recent", 
-                    type == TrackedPacketType::TELEMETRY ? "telemetry" :
-                    type == TrackedPacketType::POSITION ? "position" :
-                    type == TrackedPacketType::USERINFO ? "user info" : "encrypted", 
-                    from);
-                return true;
+    // Special handling for traceroute packets
+    if (type == TrackedPacketType::TRACEROUTE) {
+        for(const auto& node : nodes) {
+            if(node.isValid && node.nodeNum == from) {
+                if(currentTime - node.lastTime < timeout) {
+                    // Allow up to 5 traceroutes in first window
+                    if(node.tracerouteCount < MAX_INITIAL_TRACEROUTE) {
+                        return false;
+                    }
+                    LOG_DEBUG("Dropping traceroute packet from 0x%x - limit reached", from);
+                    return true;
+                }
+                // Reset counter if more than timeout has passed
+                break;
             }
-            break;
+        }
+    } else {
+        //Check for other packet types
+        for(const auto& node : nodes) {
+            if(node.isValid && node.nodeNum == from) {
+                if(currentTime - node.lastTime < timeout) {
+                    LOG_DEBUG("Dropping %s packet from 0x%x - too recent", 
+                        type == TrackedPacketType::TELEMETRY ? "telemetry" :
+                        type == TrackedPacketType::POSITION ? "position" :
+                        type == TrackedPacketType::USERINFO ? "user info" : "encrypted", 
+                        from);
+                    return true;
+                }
+                break;
+            }
         }
     }
 
@@ -94,19 +112,29 @@ void FloodingRouter::updateTrackedNode(NodeNum from, TrackedPacketType type)
 {
     auto& nodes = trackedNodes[static_cast<int>(type)];
     auto& index = trackingIndex[static_cast<int>(type)];
+    uint32_t currentTime = millis();
     
     // First try to update existing entry
     for(auto& node : nodes) {
         if(node.isValid && node.nodeNum == from) {
-            node.lastTime = millis();
+            if(type == TrackedPacketType::TRACEROUTE) {
+                if(currentTime - node.lastTime >= PACKET_TIMEOUT_MS) {
+                    // Reset counter after timeout
+                    node.tracerouteCount = 1;
+                } else {
+                    node.tracerouteCount++;
+                }
+            }
+            node.lastTime = currentTime;
             return;
         }
     }
 
     // If not found, add to next slot in circular buffer
     nodes[index].nodeNum = from;
-    nodes[index].lastTime = millis();
+    nodes[index].lastTime = currentTime;
     nodes[index].isValid = true;
+    nodes[index].tracerouteCount = (type == TrackedPacketType::TRACEROUTE) ? 1 : 0;
     
     // Move to next slot
     index = (index + 1) % MAX_TRACKED_NODES;
@@ -114,12 +142,6 @@ void FloodingRouter::updateTrackedNode(NodeNum from, TrackedPacketType type)
 
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
-    // Check if the sending node is in our ignore list
-    if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
-        LOG_DEBUG("Ignoring rebroadcast from blocked node 0x%08x", p->from);
-        return;
-    }
-
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
         if (p->id != 0) {
             if (isRebroadcaster()) {
@@ -135,29 +157,41 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 #endif
 
                 tosend->next_hop = NO_NEXT_HOP_PREFERENCE; // this should already be the case, but just in case
-                
+
+                // Check if the sending node is in our ignore list
+                if (std::find(ignoredNodes.begin(), ignoredNodes.end(), p->from) != ignoredNodes.end()) {
+                    LOG_DEBUG("Ignoring rebroadcast from blocked node 0x%08x", p->from);
+                    return;
+                }
+
+                // Check if packet came from MQTT
+                if (p->transport_mechanism == p->via_mqtt) {
+                    LOG_DEBUG("Not rebroadcasting MQTT packet from 0x%08x", p->from);
+                    return;
+                }
+
                 if (config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER || 
                     config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE ||
                     config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER) { //check if we are a router
 
-                        // Check for packet type and apply limits
-                if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
-                    if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
-                        return;
+                    // Check for packet type and apply limits
+                    if (p->which_payload_variant != meshtastic_MeshPacket_decoded_tag) {
+                        if (shouldDropRecentPacket(p->from, TrackedPacketType::ENCRYPTED)) {
+                            return;
+                        }
+                    } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
+                        if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
+                            return;
+                        }
+                    } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
+                        if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
+                            return;
+                        }
+                    } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
+                        if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
+                            return;
+                        }
                     }
-                } else if (p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) {
-                    if (shouldDropRecentPacket(p->from, TrackedPacketType::TELEMETRY)) {
-                        return;
-                    }
-                } else if (p->decoded.portnum == meshtastic_PortNum_POSITION_APP) {
-                    if (shouldDropRecentPacket(p->from, TrackedPacketType::POSITION)) {
-                        return;
-                    }
-                } else if (p->decoded.portnum == meshtastic_PortNum_NODEINFO_APP) {
-                    if (shouldDropRecentPacket(p->from, TrackedPacketType::USERINFO)) {
-                        return;
-                    }
-                }
 
                     if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
                         p->decoded.portnum == meshtastic_PortNum_TELEMETRY_APP) { //check if it is a telemetry packet
@@ -169,6 +203,7 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
                             }
                             else {
                                 if (tosend->hop_limit > 1) { //still rebroadcast but limit telemetry packet hops to 2 if router late mode
+                                    tosend->hop_start = (tosend->hop_start - (tosend->hop_limit - 1));//set hop start correctly if we are reducing hop limit
                                     tosend->hop_limit = 1;
                                     LOG_DEBUG("Broadcasting Telemetry packet with hop limit 1");
                                 }
