@@ -1,40 +1,98 @@
 <div align="center" markdown="1">
 
 <img src=".github/meshtastic_logo.png" alt="Meshtastic Logo" width="80"/>
-<h1>Meshtastic Firmware</h1>
+<h1>Meshtastic Sydney Router Firmware</h1>
 
-![GitHub release downloads](https://img.shields.io/github/downloads/meshtastic/firmware/total)
-[![CI](https://img.shields.io/github/actions/workflow/status/meshtastic/firmware/main_matrix.yml?branch=master&label=actions&logo=github&color=yellow)](https://github.com/meshtastic/firmware/actions/workflows/ci.yml)
-[![CLA assistant](https://cla-assistant.io/readme/badge/meshtastic/firmware)](https://cla-assistant.io/meshtastic/firmware)
-[![Fiscal Contributors](https://opencollective.com/meshtastic/tiers/badge.svg?label=Fiscal%20Contributors&color=deeppink)](https://opencollective.com/meshtastic/)
-[![Vercel](https://img.shields.io/static/v1?label=Powered%20by&message=Vercel&style=flat&logo=vercel&color=000000)](https://vercel.com?utm_source=meshtastic&utm_campaign=oss)
+A fork of the Meshtastic firmware optimized for Sydney's mesh
 
-<a href="https://trendshift.io/repositories/5524" target="_blank"><img src="https://trendshift.io/api/badge/repositories/5524" alt="meshtastic%2Ffirmware | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+[![Based on Meshtastic](https://img.shields.io/badge/Based%20on-Meshtastic-blue)](https://meshtastic.org)
+[![NSW Mesh](https://img.shields.io/badge/Part%20of-NSW%20Mesh-green)](https://wiki.nswmesh.au)
 
-</div>
-
-</div>
-
-<div align="center">
-	<a href="https://meshtastic.org">Website</a>
-	-
-	<a href="https://meshtastic.org/docs/">Documentation</a>
 </div>
 
 ## Overview
 
-This repository contains the official device firmware for Meshtastic, an open-source LoRa mesh networking project designed for long-range, low-power communication without relying on internet or cellular infrastructure. The firmware supports various hardware platforms, including ESP32, nRF52, RP2040/RP2350, and Linux-based devices.
+This firmware fork is specifically designed to improve mesh network performance in high-density urban environments with difficult terrain like Sydney. It implements strategic packet management and routing optimizations to reduce network congestion and improve reliability in areas with many active nodes. Also includes the addition of Routers as Zero-Hop Rebroadcasters allowing for chains of Routers not normally available due to the hop limit.
 
-Meshtastic enables text messaging, location sharing, and telemetry over a decentralized mesh network, making it ideal for outdoor adventures, emergency preparedness, and remote operations.
+### Key Features
 
-### Get Started
+#### Router Role Optimizations
+- Only affects Router/Repeater/Router_Late modes
+- Standard client behavior remains unchanged
+- Different routing behaviors for Router vs Router_Late roles
 
-- 🔧 **[Building Instructions](https://meshtastic.org/docs/development/firmware/build)** – Learn how to compile the firmware from source.
-- ⚡ **[Flashing Instructions](https://meshtastic.org/docs/getting-started/flashing-firmware/)** – Install or update the firmware on your device.
+#### Packet Management
+- **Telemetry Control**:
+  - Routers drop telemetry packets to reduce network load
+  - Router_Late nodes retransmit with hop count limited to 1
+  - 15-minute minimum interval between packets from same node
+- **Position Packets**:
+  - Normal routing behavior preserved
+  - Zero-hop treatment disabled
+  - 15-minute minimum interval enforced
+- **Encrypted Packets**:
+  - 5-minute minimum interval to prevent mesh flooding
+  - Zero-hop treatment disabled
+  - Addresses issues with encrypted nodes overwhelming the network
+- **User/Info Packets**:
+  - 15-minute minimum interval
+- **Traceroute Management**:
+  - Limited to 5 packets per 15-minute window
+  - Reduces to 1 packet per 15 minutes after initial burst
+  - Counter resets after 15 minutes of inactivity
 
-Join our community and help improve Meshtastic! 🚀
+#### Network Protection
+- **Hop Count Protection**: 
+  - Prevents zero-hopping on first hop when hop limit is 7
+  - Maintains accurate hop counts for network mapping
+  - Adjusts lower hop limits upward with each zero hop
+- **MQTT Integration**: 
+  - Blocks forwarding of MQTT packets
+  - Prevents routing loops between mesh and MQTT
+- **Blocked Node List**: 
+  - Supports blacklisting problematic nodes
+  - Helps maintain network stability
 
-## Stats
+### Why These Changes?
 
-![Alt](https://repobeats.axiom.co/api/embed/8025e56c482ec63541593cc5bd322c19d5c0bdcf.svg "Repobeats analytics image")
+These modifications address specific challenges in the Sydney mesh network:
+- Reduces channel congestion from frequent updates
+- Prevents flooding from encrypted nodes
+- Improves overall mesh reliability
+- Increases max mesh range
+- Enables better scaling in dense urban environments
+
+### NSW Mesh Resources
+
+- **[Wiki](https://wiki.nswmesh.au/)**: 
+  - Comprehensive documentation
+  - Setup guides
+  - Best practices for node deployment
+  - Network architecture information
+- **[Network Map](https://map.nswmesh.au/map)**:
+  - Real-time mesh visualization
+  - Node locations and connections
+  - Network coverage analysis
+- **[Network Dashboard](https://dash.nswmesh.au/d/edqkge9mf7v28g/main-dashboard?orgId=1&refresh=1m)**:
+  - Live network statistics
+  - Performance monitoring
+  - Network health indicators
+  - Traffic analysis
+
+### Installation
+
+1. Flash this firmware to devices intended for router roles
+2. Configure as Router, Router_Late, or Repeater based on deployment location
+3. Position according to NSW Mesh deployment guidelines
+4. Monitor performance via the Network Dashboard
+
+For detailed setup instructions and best practices, visit our [wiki](https://wiki.nswmesh.au/).
+
+## Contributing
+
+This is a community-maintained fork focusing on urban mesh deployment optimization. Contributions and feedback are welcome through issues and pull requests.
+
+## Original Project
+
+Based on [Meshtastic](https://meshtastic.org). Original firmware repository at [GitHub](https://github.com/meshtastic/firmware).
 

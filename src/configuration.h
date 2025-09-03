@@ -480,3 +480,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //Removed nodes off list
 //0xba0c7538
 //0x66a9b13b
+#define APP_VERSION "SYD-2.7.8"
+#define APP_VERSION_MAJOR 2
+#define APP_VERSION_MINOR 7
+#define APP_VERSION_PATCH 8
