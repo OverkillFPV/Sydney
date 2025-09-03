@@ -42,10 +42,10 @@ This firmware fork is specifically designed to improve mesh network performance 
   - Counter resets after 15 minutes of inactivity
 
 #### Network Protection
-- **Hop Count Protection**: 
+- **Hop Count**: 
   - Prevents zero-hopping on first hop when hop limit is 7
-  - Maintains accurate hop counts for network mapping
-  - Adjusts lower hop limits upward with each zero hop
+  - Routers roles zero hop packets without decreasing hop count for most packets
+  - Adjusts lower hop start upward with each zero hop to preserve hop count seen in node list
 - **MQTT Integration**: 
   - Blocks forwarding of MQTT packets
   - Prevents routing loops between mesh and MQTT
